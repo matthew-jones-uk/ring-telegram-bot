@@ -6,7 +6,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 
 const recordingDir = process.env.RECORDING_DIR;
-const recordingDuration = process.env.RECORDING_DURATION;
+const recordingDuration = process.env.RECORDING_DURATION || 15;
 
 const ringApi = new RingApi({
     refreshToken: process.env.RING_REFRESH_TOKEN,

@@ -24,9 +24,9 @@ You need to create a `.env` file in the root directory with the following entrie
 
     Absolute path to the directory where recordings should be saved. The directory should be created.
 
-- RECORDING_DURATION=15
+- RECORDING_DURATION
 
-    Duration (in seconds) to record for after a motion event.
+    Duration (in seconds) to record for after a motion event. Defaults to 15 seconds.
 
 #### Example
 
