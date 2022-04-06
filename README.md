@@ -4,6 +4,8 @@ This detects motion events for Ring cameras/doorbells and sends a recording via 
 
 ## Setup
 
+### Config
+
 You need to create a `.env` file in the root directory with the following entries:
 
 - RING_REFRESH_TOKEN
@@ -26,7 +28,7 @@ You need to create a `.env` file in the root directory with the following entrie
 
     Duration (in seconds) to record for after a motion event.
 
-### Example
+#### Example
 
 ```bash
 RING_REFRESH_TOKEN="ASALDKNASLKDJNASLKFJNASLKDNASDKLNJASDKLJASNDLKJASDNLKJASNDLKASJDNLKASJDNALSKDJNASLKDJNASLKDJASNLDASLDKJAS:DLKJASLDKJASDLKASJD:LASKJDLASDNKASJDNKLASJDNAKJSBDHAJSKDBHAKJSBDHASJKBDHASKJDHBASKJDBHASKJDHBASDKJBASHDKJBASHDKJBASHDJSJHBAJSF"
@@ -36,6 +38,10 @@ TELEGRAM_BOT_CHATS="123456789 987654321"
 RECORDING_DIR="/tmp/recordings"
 RECORDING_DURATION=15
 ```
+
+### Running
+
+You can either start directly via `npm install` then `node index.js`, or you can use a container with the Dockerfile.
 
 ## Usage
 
