@@ -1,0 +1,17 @@
+{
+  "name": "ring-telegram-bot",
+  "version": "0.1.0",
+  "description": "Simple bot that sends a video recording to users via telegram when a ring doorbell motion event is received.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "node-telegram-bot-api": "^0.56.0",
+    "ring-client-api": "^9.24.0"
+  }
+}
