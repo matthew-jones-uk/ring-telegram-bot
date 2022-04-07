@@ -26,7 +26,7 @@ You need to create a `.env` file in the root directory with the following entrie
 
 - RECORDING_DURATION
 
-    Duration (in seconds) to record for after a motion event. Defaults to 15 seconds.
+    Duration (in seconds) to record for, after a motion event. Defaults to 15 seconds.
 
 #### Example
 
@@ -45,6 +45,6 @@ You can either start directly via `npm install` then `node index.js`, or you can
 
 ## Usage
 
-You will have to have sent `/start` to the bot for it to send messages to you. From then on, when motion events are detected (and your chat ID is in the config) you will recieve a message with the video for the motion event.
+You will have to have sent `/start` to the bot for it to send messages to you. From then on, when motion events are detected (and your chat ID is in the config) you will receive a message with the video for the motion event.
 
-To recieve your message, it will take `your recording duration + video upload duration`. This means that with a long duration or a slow internet upload speed there may be a significant delay.
+To receive your message, it will take `your recording duration + video upload duration`. This means that with a long duration, or a slow internet upload speed, there may be a significant delay.
