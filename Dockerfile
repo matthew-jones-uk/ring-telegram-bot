@@ -1,13 +1,29 @@
-FROM node:14-alpine
+FROM node:lts-alpine as builder
+
+ENV NODE_ENV=development
+
+WORKDIR /app
+
+COPY ["package.json", "package-lock.json", "./"]
+
+RUN npm install
+
+COPY . .
+
+RUN [ "npm", "run", "build"]
+
+FROM node:lts-alpine as production
 
 ENV NODE_ENV=production
 
 WORKDIR /app
 
-COPY ["package.json", "package-lock.json*", "./"]
+COPY ["package.json", "package-lock.json", "./"]
 
-RUN npm install --production
+RUN npm install
 
 COPY . .
 
-CMD [ "node", "index.js" ]
+COPY --from=builder /app/dist ./dist
+
+CMD [ "npm", "start" ]

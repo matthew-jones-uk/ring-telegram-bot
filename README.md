@@ -41,10 +41,10 @@ RECORDING_DURATION=15
 
 ### Running
 
-You can either start directly via `npm install` then `node index.js`, or you can use a container with the Dockerfile.
+You can either start directly via `npm build` then `npm start`, or you can use a container with the Dockerfile.
 
 ## Usage
 
-You will have to have sent `/start` to the bot for it to send messages to you. From then on, when motion events are detected (and your chat ID is in the config) you will recieve a message with the video for the motion event.
+You will have to have sent `/start` to the bot for it to send messages to you. From then on, when motion events are detected (and your chat ID is in the config) you will receive a message with the video for the motion event.
 
-To recieve your message, it will take `your recording duration + video upload duration`. This means that with a long duration or a slow internet upload speed there may be a significant delay.
+To receive your message, it will take `your recording duration + video upload duration`. This means that with a long duration or a slow internet upload speed there may be a significant delay.
