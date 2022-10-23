@@ -4,7 +4,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import { readFile, writeFile } from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
-import { getRecordingConfig, getRingConfig, getTelegramConfig } from './config';
+import { getRecordingConfig, getRingConfig, getTelegramConfig } from './config.js';
 
 const setupTelegramBot = (telegramConfig: TelegramConfig): TelegramBot =>
     new TelegramBot(telegramConfig.botToken, { polling: true });
@@ -68,8 +68,9 @@ const setup = async () => {
         });
     }
 
-    console.log('Found total of ' + allCameras.length + ' cameras');
+    console.log('Setup total of ' + allCameras.length + ' camera(s)');
+    console.log('Listening for motion events...');
 };
 
-await setup();
-console.log('Listening...');
+console.log('Starting...');
+setup();
