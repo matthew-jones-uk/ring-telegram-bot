@@ -6,7 +6,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 
 const recordingDir = process.env.RECORDING_DIR || '/tmp';
-const recordingDurationString = process.env.RECORDING_DURATION || 15;
+const recordingDurationString = process.env.RECORDING_DURATION || 30;
 const refreshToken = process.env.RING_REFRESH_TOKEN;
 const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
 

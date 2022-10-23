@@ -26,7 +26,7 @@ You need to create a `.env` file in the root directory with the following entrie
 
 - RECORDING_DURATION
 
-    Duration (in seconds) to record for after a motion event. Defaults to 15 seconds.
+    Duration (in seconds) to record for after a motion event. Defaults to 30 seconds.
 
 #### Example
 
@@ -36,7 +36,7 @@ TELEGRAM_BOT_TOKEN="1234567890:dfgkalsifjgusjdmvuskdugksbdiakfldja"
 # split by spaces
 TELEGRAM_BOT_CHATS="123456789 987654321"
 RECORDING_DIR="/tmp/recordings"
-RECORDING_DURATION=15
+RECORDING_DURATION=30
 ```
 
 ### Running
