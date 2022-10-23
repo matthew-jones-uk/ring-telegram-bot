@@ -43,29 +43,25 @@ const telegramChats = process.env.TELEGRAM_BOT_CHATS.split(' ');
 
 const sendRecording = async (recordingPath: string) => {
     const fileOptions = { filename: path.basename(recordingPath), contentType: 'video/mp4' };
-    telegramChats.forEach(chatId => {
+    telegramChats.forEach((chatId) => {
         telegramBot.sendVideo(chatId, recordingPath, {}, fileOptions).then((result) => {
             console.log(result);
         });
     });
-}
+};
 
-ringApi.onRefreshTokenUpdated.subscribe(
-    async ({ newRefreshToken, oldRefreshToken }) => {
-        console.log('Refresh Token Updated: ', newRefreshToken)
+ringApi.onRefreshTokenUpdated.subscribe(async ({ newRefreshToken, oldRefreshToken }) => {
+    console.log('Refresh Token Updated: ', newRefreshToken);
 
-        if (!oldRefreshToken) {
-            return
-        }
-
-        const currentConfig = await promisify(readFile)('.env'),
-            updatedConfig = currentConfig
-                .toString()
-                .replace(oldRefreshToken, newRefreshToken)
-
-        await promisify(writeFile)('.env', updatedConfig)
+    if (!oldRefreshToken) {
+        return;
     }
-)
+
+    const currentConfig = await promisify(readFile)('.env'),
+        updatedConfig = currentConfig.toString().replace(oldRefreshToken, newRefreshToken);
+
+    await promisify(writeFile)('.env', updatedConfig);
+});
 
 const allCameras = await ringApi.getCameras();
 
@@ -80,8 +76,8 @@ if (allCameras.length) {
             const recordingFile = path.join(recordingDir, filename);
             await camera.recordToFile(recordingFile, recordingDuration);
             sendRecording(recordingFile);
-        })
+        });
     }
 }
 
-console.log("Listening...");
+console.log('Listening...');
