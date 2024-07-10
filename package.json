@@ -2,13 +2,12 @@
   "name": "ring-telegram-bot",
   "version": "0.1.0",
   "description": "Simple bot that sends a video recording to users via telegram when a ring doorbell motion event is received.",
-  "main": "dist/index.js",
-  "type": "module",
   "scripts": {
-    "build": "tsc -p .",
+    "build": "esbuild src/index.ts --bundle --minify --platform=node --outdir=dist",
     "start": "node dist/index.js",
     "lint": "prettier --check src/*.ts && eslint --ext src/*.ts",
-    "lint-fix": "prettier --write src/*.ts && eslint --ext src/*.ts --fix"
+    "lint-fix": "prettier --write src/*.ts && eslint --ext src/*.ts --fix",
+    "clean": "rm -rf dist"
   },
   "author": "",
   "license": "ISC",
@@ -22,6 +21,7 @@
     "@types/ws": "^8.5.3",
     "@typescript-eslint/eslint-plugin": "^5.40.1",
     "@typescript-eslint/parser": "^5.40.1",
+    "esbuild": "^0.23.0",
     "eslint": "^8.26.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.2.1",

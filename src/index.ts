@@ -4,7 +4,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import { readFile, writeFile } from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
-import { getRecordingConfig, getRingConfig, getTelegramConfig } from './config.js';
+import { getRecordingConfig, getRingConfig, getTelegramConfig } from './config';
 
 const setupTelegramBot = (telegramConfig: TelegramConfig): TelegramBot =>
     new TelegramBot(telegramConfig.botToken, { polling: true });
