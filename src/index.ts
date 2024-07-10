@@ -1,9 +1,8 @@
 import { RingApi } from 'ring-client-api';
 import 'dotenv/config';
 import TelegramBot from 'node-telegram-bot-api';
-import { readFile, writeFile } from 'fs';
+import { readFile, writeFile } from 'fs/promises';
 import * as path from 'path';
-import { promisify } from 'util';
 import { getRecordingConfig, getRingConfig, getTelegramConfig } from './config';
 
 const setupTelegramBot = (telegramConfig: TelegramConfig): TelegramBot =>
@@ -23,10 +22,11 @@ const setupRingApi = (ringConfig: RingConfig): RingApi => {
             return;
         }
 
-        const currentConfig = await promisify(readFile)('.env'),
-            updatedConfig = currentConfig.toString().replace(oldRefreshToken, newRefreshToken);
+        // TODO: redo this to properly support env variables and to more gracefully handle token updates
+        const currentConfig = await readFile('.env');
+        const updatedConfig = currentConfig.toString().replace(oldRefreshToken, newRefreshToken);
 
-        await promisify(writeFile)('.env', updatedConfig);
+        await writeFile('.env', updatedConfig);
     });
 
     return ringApi;
