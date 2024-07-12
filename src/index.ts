@@ -60,7 +60,9 @@ const setup = async () => {
         camera.onNewNotification.subscribe(async ({ ding, subtype }) => {
             const timestamp = new Date().toISOString();
             const filename = `${timestamp}-${camera.name}-${subtype}.mp4`;
-            console.log(`${ding.detection_type} event detected on ${camera.name}. Recording to ${filename}`);
+            console.log(
+                `${ding.detection_type} event of ${subtype} detected on ${camera.name}. Recording to ${filename}`,
+            );
             const recordingFile = path.join(recordingConfig.directory, filename);
             await camera.recordToFile(recordingFile, recordingConfig.snippetDuration);
             sendRecording(recordingFile, telegramConfig.chatIds, telegramBot);
