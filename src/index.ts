@@ -6,7 +6,7 @@ import * as path from 'path';
 import { getRecordingConfig, getRingConfig, getTelegramConfig } from './config';
 
 const setupTelegramBot = (telegramConfig: TelegramConfig): TelegramBot =>
-    new TelegramBot(telegramConfig.botToken, { polling: true });
+    new TelegramBot(telegramConfig.botToken, { polling: false });
 
 const setupRingApi = (ringConfig: RingConfig): RingApi => {
     const ringApi = new RingApi({
