@@ -14,6 +14,8 @@ RUN [ "npm", "run", "build"]
 
 FROM node:lts-alpine as production
 
+RUN apk update && apk add --no-cache ffmpeg
+
 ENV NODE_ENV=production
 
 WORKDIR /app
