@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "description": "Simple bot that sends a video recording to users via telegram when a ring doorbell motion event is received.",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --minify --platform=node --outdir=dist",
+    "build": "npm run build:bundle && npm run lint",
+    "build:bundle": "esbuild src/index.ts --bundle --minify --platform=node --outdir=dist",
     "start": "node dist/index.js",
     "lint": "prettier --check src/*.ts && eslint --ext src/*.ts",
     "lint-fix": "prettier --write src/*.ts && eslint --ext src/*.ts --fix",
