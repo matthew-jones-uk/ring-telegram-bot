@@ -60,12 +60,48 @@ const setup = async () => {
         camera.onNewNotification.subscribe(async ({ ding, subtype }) => {
             const timestamp = new Date().toISOString();
             const filename = `${timestamp}-${camera.name}-${subtype}.mp4`;
-            console.log(
-                `${ding.detection_type} event of ${subtype} detected on ${camera.name}. Recording to ${filename}`,
-            );
-            const recordingFile = path.join(recordingConfig.directory, filename);
-            await camera.recordToFile(recordingFile, recordingConfig.snippetDuration);
-            sendRecording(recordingFile, telegramConfig.chatIds, telegramBot);
+            console.log(`${ding.detection_type} event of ${subtype} detected on ${camera.name}. Starting recording...`);
+
+            try {
+                const recordingFile = path.join(recordingConfig.directory, filename);
+
+                // Start recording with streamVideo (allows us to stop it dynamically)
+                const sipSession = await camera.streamVideo({
+                    output: [recordingFile],
+                });
+
+                console.log(`Recording started: ${filename}`);
+
+                // Subscribe to motion detection changes
+                const motionSubscription = camera.onMotionDetected.subscribe((motionDetected) => {
+                    if (!motionDetected) {
+                        console.log(`Motion stopped for ${camera.name}. Ending recording...`);
+                        sipSession.stop();
+                        motionSubscription.unsubscribe();
+                    }
+                });
+
+                // When the call ends, send the recording
+                sipSession.onCallEnded.subscribe(async () => {
+                    console.log(`Recording completed: ${filename}`);
+                    motionSubscription.unsubscribe();
+
+                    try {
+                        await sendRecording(recordingFile, telegramConfig.chatIds, telegramBot);
+                        console.log(`Recording sent to Telegram: ${filename}`);
+                    } catch (error) {
+                        console.error(
+                            `Failed to send recording ${filename}:`,
+                            error instanceof Error ? error.message : error,
+                        );
+                    }
+                });
+            } catch (error) {
+                console.error(
+                    `Failed to record motion event for ${camera.name}:`,
+                    error instanceof Error ? error.message : error,
+                );
+            }
         });
     }
 

@@ -8,6 +8,5 @@ type RingConfig = {
 };
 
 type RecordingConfig = {
-    snippetDuration: number;
     directory: string;
 };
