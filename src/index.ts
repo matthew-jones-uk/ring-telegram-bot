@@ -22,7 +22,11 @@ const refreshTokenListener = (ringApi: RingApi) =>
                 yield* Effect.log('Refresh token updated');
                 if (!oldRefreshToken) return;
                 const currentConfig = yield* Effect.tryPromise(() => readFile('.env'));
-                const updatedConfig = currentConfig.toString().replace(oldRefreshToken, newRefreshToken);
+                const configStr = currentConfig.toString();
+                if (!configStr.includes(oldRefreshToken)) {
+                    yield* Effect.fail(new Error('Old refresh token not found in .env'));
+                }
+                const updatedConfig = configStr.replace(oldRefreshToken, newRefreshToken);
                 yield* Effect.tryPromise(() => writeFile('.env', updatedConfig));
                 yield* Effect.log('Updated .env with new refresh token');
             }),
