@@ -3,7 +3,7 @@ import 'dotenv/config';
 import TelegramBot from 'node-telegram-bot-api';
 import { readFile, writeFile } from 'fs/promises';
 import * as path from 'path';
-import { Effect, Stream } from 'effect';
+import { Effect, Schedule, Stream } from 'effect';
 import { NodeRuntime } from '@effect/platform-node';
 import { telegramConfig, ringConfig, recordingConfig } from './config';
 import { streamFromObservable, neverEndingStream } from './stream';
@@ -48,8 +48,25 @@ const sendRecording = (recordingFile: string, filename: string, chatIds: string[
     );
 
 /**
+ * Periodically logs camera health information including connectivity,
+ * subscription state, and battery status. Runs every 5 minutes.
+ */
+const cameraWatchdog = (camera: RingCamera) =>
+    Effect.log(
+        `[watchdog] ${camera.name}`,
+        JSON.stringify({
+            offline: camera.isOffline,
+            subscribed: camera.data.subscribed,
+            subscribedMotions: camera.data.subscribed_motions,
+            activeNotifications: camera.activeNotifications.length,
+            ...(camera.hasBattery && { battery: camera.batteryLevel, charging: camera.isCharging }),
+        }),
+    ).pipe(Effect.repeat(Schedule.spaced('5 minutes')));
+
+/**
  * Listens for push notifications on a Ring camera, records video on each event,
  * and sends the recording to Telegram. Events are processed concurrently.
+ * Runs a watchdog alongside to log camera health every 5 minutes.
  * Runs indefinitely — fails if the notification stream ends or errors.
  */
 const cameraListener = (
@@ -57,28 +74,37 @@ const cameraListener = (
     recording: { snippetDuration: number; directory: string },
     chatIds: string[],
     bot: TelegramBot,
-) =>
-    neverEndingStream(
-        streamFromObservable(camera.onNewNotification),
-        `Notification stream for ${camera.name} ended unexpectedly`,
-    ).pipe(
-        Stream.mapEffect(
-            (notification) =>
-                Effect.gen(function* () {
-                    const { ding } = notification.data.event;
-                    const timestamp = new Date().toISOString();
-                    const filename = `${timestamp}-${camera.name}-${ding.subtype}.mp4`;
-                    yield* Effect.log(
-                        `${ding.detection_type} event of ${ding.subtype} on ${camera.name}. Recording to ${filename}`,
-                    );
-                    const recordingFile = path.join(recording.directory, filename);
-                    yield* Effect.tryPromise(() => camera.recordToFile(recordingFile, recording.snippetDuration));
-                    yield* sendRecording(recordingFile, filename, chatIds, bot);
-                }),
-            { concurrency: 'unbounded' },
+) => {
+    const notifications = Effect.log(`Subscribing to notifications for ${camera.name}`).pipe(
+        Effect.andThen(
+            neverEndingStream(
+                streamFromObservable(camera.onNewNotification),
+                `Notification stream for ${camera.name} ended unexpectedly`,
+            ).pipe(
+                Stream.mapEffect(
+                    (notification) =>
+                        Effect.gen(function* () {
+                            const { ding } = notification.data.event;
+                            const timestamp = new Date().toISOString();
+                            const filename = `${timestamp}-${camera.name}-${ding.subtype}.mp4`;
+                            yield* Effect.log(
+                                `${ding.detection_type} event of ${ding.subtype} on ${camera.name}. Recording to ${filename}`,
+                            );
+                            const recordingFile = path.join(recording.directory, filename);
+                            yield* Effect.tryPromise(() =>
+                                camera.recordToFile(recordingFile, recording.snippetDuration),
+                            );
+                            yield* sendRecording(recordingFile, filename, chatIds, bot);
+                        }),
+                    { concurrency: 'unbounded' },
+                ),
+                Stream.runDrain,
+            ),
         ),
-        Stream.runDrain,
     );
+
+    return Effect.all([notifications, cameraWatchdog(camera)], { concurrency: 'unbounded' });
+};
 
 // --- Main ---
 
@@ -99,7 +125,7 @@ const program = Effect.gen(function* () {
     });
 
     const cameras = yield* Effect.tryPromise(() => ringApi.getCameras());
-    yield* Effect.log(`Setup total of ${cameras.length} camera(s)`);
+    yield* Effect.log(`Got total of ${cameras.length} camera(s)`);
 
     for (const camera of cameras) {
         yield* Effect.log(`Found ${camera.deviceType} called ${camera.name}`);
