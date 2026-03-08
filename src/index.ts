@@ -63,12 +63,13 @@ const cameraListener = (
         `Notification stream for ${camera.name} ended unexpectedly`,
     ).pipe(
         Stream.mapEffect(
-            ({ ding, subtype }) =>
+            (notification) =>
                 Effect.gen(function* () {
+                    const { ding } = notification.data.event;
                     const timestamp = new Date().toISOString();
-                    const filename = `${timestamp}-${camera.name}-${subtype}.mp4`;
+                    const filename = `${timestamp}-${camera.name}-${ding.subtype}.mp4`;
                     yield* Effect.log(
-                        `${ding.detection_type} event of ${subtype} on ${camera.name}. Recording to ${filename}`,
+                        `${ding.detection_type} event of ${ding.subtype} on ${camera.name}. Recording to ${filename}`,
                     );
                     const recordingFile = path.join(recording.directory, filename);
                     yield* Effect.tryPromise(() => camera.recordToFile(recordingFile, recording.snippetDuration));
