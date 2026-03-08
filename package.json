@@ -13,11 +13,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@effect/platform-node": "^0.68.0",
     "dotenv": "^16.0.0",
+    "effect": "^3.12.0",
     "node-telegram-bot-api": "^0.66.0",
     "ring-client-api": "^12.1.1"
   },
   "devDependencies": {
+    "@types/node": "^22.19.11",
     "@types/node-telegram-bot-api": "^0.64.7",
     "@types/ws": "^8.5.3",
     "@typescript-eslint/eslint-plugin": "^5.40.1",
@@ -27,7 +30,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.2.1",
     "prettier": "^2.7.1",
-    "typescript": "^4.8.4"
+    "typescript": "^5.0.0"
   },
   "prettier": {
     "semi": true,
