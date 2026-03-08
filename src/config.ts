@@ -13,3 +13,7 @@ export const recordingConfig = Config.all({
     snippetDuration: Config.integer('RECORDING_DURATION').pipe(Config.withDefault(30)),
     directory: Config.string('RECORDING_DIR').pipe(Config.withDefault('/tmp')),
 });
+
+export const watchdogConfig = Config.all({
+    intervalMinutes: Config.integer('WATCHDOG_INTERVAL_MINUTES').pipe(Config.withDefault(30)),
+});

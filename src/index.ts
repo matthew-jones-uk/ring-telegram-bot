@@ -3,9 +3,9 @@ import 'dotenv/config';
 import TelegramBot from 'node-telegram-bot-api';
 import { readFile, writeFile } from 'fs/promises';
 import * as path from 'path';
-import { Effect, Schedule, Stream } from 'effect';
+import { Duration, Effect, Schedule, Stream } from 'effect';
 import { NodeRuntime } from '@effect/platform-node';
-import { telegramConfig, ringConfig, recordingConfig } from './config';
+import { telegramConfig, ringConfig, recordingConfig, watchdogConfig } from './config';
 import { streamFromObservable, neverEndingStream } from './stream';
 
 /**
@@ -51,22 +51,26 @@ const sendRecording = (recordingFile: string, filename: string, chatIds: string[
  * Periodically logs camera health information including connectivity,
  * subscription state, and battery status. Runs every 5 minutes.
  */
-const cameraWatchdog = (camera: RingCamera) =>
-    Effect.log(
-        `[watchdog] ${camera.name}`,
-        JSON.stringify({
-            offline: camera.isOffline,
-            subscribed: camera.data.subscribed,
-            subscribedMotions: camera.data.subscribed_motions,
-            activeNotifications: camera.activeNotifications.length,
-            ...(camera.hasBattery && { battery: camera.batteryLevel, charging: camera.isCharging }),
-        }),
-    ).pipe(Effect.repeat(Schedule.spaced('5 minutes')));
+const cameraWatchdog = (camera: RingCamera, intervalMinutes: number) => {
+    const status = () => {
+        const parts = [
+            `offline=${camera.isOffline}`,
+            `subscribed=${camera.data.subscribed}`,
+            `subscribed_motions=${camera.data.subscribed_motions}`,
+            `active_notifications=${camera.activeNotifications.length}`,
+            ...(camera.hasBattery ? [`battery=${camera.batteryLevel}%`, `charging=${camera.isCharging}`] : []),
+        ];
+        return parts.join(', ');
+    };
+    return Effect.log(`[watchdog] ${camera.name}: ${status()}`).pipe(
+        Effect.repeat(Schedule.spaced(Duration.minutes(intervalMinutes))),
+    );
+};
 
 /**
  * Listens for push notifications on a Ring camera, records video on each event,
  * and sends the recording to Telegram. Events are processed concurrently.
- * Runs a watchdog alongside to log camera health every 5 minutes.
+ * Runs a watchdog alongside to periodically log camera health.
  * Runs indefinitely — fails if the notification stream ends or errors.
  */
 const cameraListener = (
@@ -74,6 +78,7 @@ const cameraListener = (
     recording: { snippetDuration: number; directory: string },
     chatIds: string[],
     bot: TelegramBot,
+    watchdogIntervalMinutes: number,
 ) => {
     const notifications = Effect.log(`Subscribing to notifications for ${camera.name}`).pipe(
         Effect.andThen(
@@ -103,7 +108,7 @@ const cameraListener = (
         ),
     );
 
-    return Effect.all([notifications, cameraWatchdog(camera)], { concurrency: 'unbounded' });
+    return Effect.all([notifications, cameraWatchdog(camera, watchdogIntervalMinutes)], { concurrency: 'unbounded' });
 };
 
 // --- Main ---
@@ -116,6 +121,7 @@ const program = Effect.gen(function* () {
     const telegram = yield* telegramConfig;
     const ring = yield* ringConfig;
     const recording = yield* recordingConfig;
+    const watchdog = yield* watchdogConfig;
 
     const bot = new TelegramBot(telegram.botToken, { polling: false });
     const ringApi = new RingApi({
@@ -136,7 +142,9 @@ const program = Effect.gen(function* () {
     yield* Effect.all(
         [
             refreshTokenListener(ringApi),
-            ...cameras.map((camera) => cameraListener(camera, recording, telegram.chatIds, bot)),
+            ...cameras.map((camera) =>
+                cameraListener(camera, recording, telegram.chatIds, bot, watchdog.intervalMinutes),
+            ),
         ],
         { concurrency: 'unbounded' },
     );
