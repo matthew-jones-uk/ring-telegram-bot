@@ -2,6 +2,8 @@ import TelegramBot from 'node-telegram-bot-api';
 import { Uploader, UploadResult } from './uploader';
 
 export class TelegramUploader implements Uploader {
+    readonly destination = 'telegram';
+
     constructor(
         private bot: TelegramBot,
         private chatIds: string[],
@@ -28,7 +30,7 @@ export class TelegramUploader implements Uploader {
         if (errors.length === this.chatIds.length) {
             return {
                 success: false,
-                destination: 'telegram',
+                destination: this.destination,
                 error: new Error(`Failed to send to all ${this.chatIds.length} Telegram chat(s)`),
             };
         }
