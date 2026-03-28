@@ -7,4 +7,5 @@ export type UploadResult = {
 
 export interface Uploader {
     upload(filePath: string, filename: string): Promise<UploadResult>;
+    healthCheck(): Promise<void>;
 }

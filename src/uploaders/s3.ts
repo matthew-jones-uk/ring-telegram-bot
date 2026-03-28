@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
 import { Uploader, UploadResult } from './uploader';
@@ -24,6 +24,10 @@ export class S3Uploader implements Uploader {
                 secretAccessKey: config.secretAccessKey,
             },
         });
+    }
+
+    async healthCheck(): Promise<void> {
+        await this.s3Client.send(new HeadBucketCommand({ Bucket: this.config.bucket }));
     }
 
     async upload(filePath: string, filename: string): Promise<UploadResult> {

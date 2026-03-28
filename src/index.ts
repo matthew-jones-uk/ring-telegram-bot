@@ -163,7 +163,10 @@ const UploadManagerLive = Layer.effect(
             return yield* Effect.fail(new Error('No upload destinations configured — set Telegram or S3 env vars'));
         }
 
-        return new UploadManager(uploaders);
+        const manager = new UploadManager(uploaders);
+        yield* Effect.tryPromise(() => manager.healthCheckAll());
+        yield* Effect.log('All upload destinations passed health checks');
+        return manager;
     }),
 );
 
