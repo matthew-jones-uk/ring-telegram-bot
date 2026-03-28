@@ -9,8 +9,11 @@ export class UploadManager {
             .map((r, i) => (r.status === 'rejected' ? { uploader: this.uploaders[i], error: r.reason } : null))
             .filter((r) => r !== null);
         if (failures.length > 0) {
-            const messages = failures.map((f) => (f.error instanceof Error ? f.error.message : String(f.error)));
-            throw new Error(`Health check failed: ${messages.join('; ')}`);
+            const messages = failures.map((f) => {
+                const detail = f.error instanceof Error ? f.error.message : String(f.error);
+                return `${f.uploader.destination}: ${detail}`;
+            });
+            throw new Error(`Health check failed — ${messages.join('; ')}`);
         }
     }
 

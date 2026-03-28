@@ -13,6 +13,7 @@ export type S3Config = {
 };
 
 export class S3Uploader implements Uploader {
+    readonly destination = 's3';
     private s3Client: S3Client;
 
     constructor(private config: S3Config) {
@@ -27,7 +28,11 @@ export class S3Uploader implements Uploader {
     }
 
     async healthCheck(): Promise<void> {
-        await this.s3Client.send(new HeadBucketCommand({ Bucket: this.config.bucket }));
+        try {
+            await this.s3Client.send(new HeadBucketCommand({ Bucket: this.config.bucket }));
+        } catch (error) {
+            throw new Error(`S3 bucket "${this.config.bucket}" is not accessible`, { cause: error });
+        }
     }
 
     async upload(filePath: string, filename: string): Promise<UploadResult> {
@@ -51,7 +56,7 @@ export class S3Uploader implements Uploader {
 
             return {
                 success: true,
-                destination: 's3',
+                destination: this.destination,
                 url,
             };
         } catch (error) {
@@ -59,7 +64,7 @@ export class S3Uploader implements Uploader {
             console.error(`Error uploading ${filename} to S3:`, err.message);
             return {
                 success: false,
-                destination: 's3',
+                destination: this.destination,
                 error: err,
             };
         }
