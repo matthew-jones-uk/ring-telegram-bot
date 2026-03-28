@@ -1,9 +1,9 @@
 import { RingApi, RingCamera } from 'ring-client-api';
 import 'dotenv/config';
 import TelegramBot from 'node-telegram-bot-api';
-import { readFile, writeFile } from 'fs/promises';
+import { readFile, writeFile, unlink } from 'fs/promises';
 import * as path from 'path';
-import { Context, Duration, Effect, Layer, Schedule, Stream } from 'effect';
+import { Context, Duration, Effect, Layer, Option, Schedule, Stream } from 'effect';
 import { NodeRuntime } from '@effect/platform-node';
 import {
     TelegramConfig,
@@ -14,8 +14,14 @@ import {
     RecordingConfigLive,
     WatchdogConfig,
     WatchdogConfigLive,
+    S3StorageConfig,
+    S3StorageConfigLive,
 } from './config';
 import { streamFromObservable, neverEndingStream } from './stream';
+import { UploadManager } from './uploaders/manager';
+import { TelegramUploader } from './uploaders/telegram';
+import { S3Uploader } from './uploaders/s3';
+import type { Uploader } from './uploaders/uploader';
 
 /**
  * Listens for Ring refresh token updates and persists them to the .env file.
@@ -43,20 +49,6 @@ const refreshTokenListener = (ringApi: RingApi) =>
     );
 
 /**
- * Sends a recorded video file to all configured Telegram chats.
- * Errors per chat are logged and do not interrupt sending to other chats.
- */
-const sendRecording = (recordingFile: string, filename: string, chatIds: string[], bot: TelegramBot) =>
-    Effect.forEach(
-        chatIds,
-        (chatId) =>
-            Effect.tryPromise(() =>
-                bot.sendVideo(chatId, recordingFile, {}, { filename, contentType: 'video/mp4' }),
-            ).pipe(Effect.catchAll((e) => Effect.log(`Error sending ${filename} to chat ${chatId}: ${e}`))),
-        { discard: true },
-    );
-
-/**
  * Periodically logs camera health information including connectivity,
  * subscription state, and battery status.
  */
@@ -80,15 +72,14 @@ const cameraWatchdog = (camera: RingCamera) =>
 
 /**
  * Listens for push notifications on a Ring camera, records video on each event,
- * and sends the recording to Telegram. Events are processed concurrently.
+ * and uploads to all configured destinations. Events are processed concurrently.
  * Runs a watchdog alongside to periodically log camera health.
  * Runs indefinitely — fails if the notification stream ends or errors.
  */
 const cameraListener = (camera: RingCamera) =>
     Effect.gen(function* () {
-        const { chatIds } = yield* TelegramConfig;
         const recording = yield* RecordingConfig;
-        const bot = yield* TelegramBotService;
+        const uploadManager = yield* UploadManagerService;
 
         const notifications = Effect.log(`Subscribing to notifications for ${camera.name}`).pipe(
             Effect.andThen(
@@ -109,7 +100,31 @@ const cameraListener = (camera: RingCamera) =>
                                 yield* Effect.tryPromise(() =>
                                     camera.recordToFile(recordingFile, recording.snippetDuration),
                                 );
-                                yield* sendRecording(recordingFile, filename, chatIds, bot);
+                                const results = yield* Effect.tryPromise(() =>
+                                    uploadManager.uploadToAll(recordingFile, filename),
+                                );
+                                yield* Effect.forEach(
+                                    results,
+                                    (result) =>
+                                        result.success
+                                            ? Effect.log(
+                                                  `Uploaded to ${result.destination}${
+                                                      result.url ? `: ${result.url}` : ''
+                                                  }`,
+                                              )
+                                            : Effect.log(
+                                                  `Failed to upload to ${result.destination}: ${
+                                                      result.error?.message ?? 'unknown error'
+                                                  }`,
+                                              ),
+                                    { discard: true },
+                                );
+                                if (recording.cleanupAfterUpload && results.every((r) => r.success)) {
+                                    yield* Effect.tryPromise(() => unlink(recordingFile)).pipe(
+                                        Effect.tap(() => Effect.log(`Cleaned up local file: ${filename}`)),
+                                        Effect.catchAll((e) => Effect.log(`Failed to clean up ${filename}: ${e}`)),
+                                    );
+                                }
                             }),
                         { concurrency: 'unbounded' },
                     ),
@@ -123,14 +138,35 @@ const cameraListener = (camera: RingCamera) =>
 
 // --- Services ---
 
-/** TelegramBot instance as a service. */
-class TelegramBotService extends Context.Tag('TelegramBotService')<TelegramBotService, TelegramBot>() {}
+/** UploadManager as a service — wires Telegram and/or S3 uploaders from config. */
+class UploadManagerService extends Context.Tag('UploadManagerService')<UploadManagerService, UploadManager>() {}
 
-const TelegramBotLive = Layer.effect(
-    TelegramBotService,
+const UploadManagerLive = Layer.effect(
+    UploadManagerService,
     Effect.gen(function* () {
-        const { botToken } = yield* TelegramConfig;
-        return new TelegramBot(botToken, { polling: false });
+        const telegramOpt = yield* Effect.serviceOption(TelegramConfig);
+        const s3Opt = yield* Effect.serviceOption(S3StorageConfig);
+        const uploaders: Uploader[] = [];
+
+        if (Option.isSome(telegramOpt)) {
+            const { botToken, chatIds } = telegramOpt.value;
+            uploaders.push(new TelegramUploader(new TelegramBot(botToken, { polling: false }), chatIds));
+            yield* Effect.log('Telegram uploader configured');
+        }
+
+        if (Option.isSome(s3Opt)) {
+            uploaders.push(new S3Uploader(s3Opt.value));
+            yield* Effect.log(`S3 uploader configured for bucket: ${s3Opt.value.bucket}`);
+        }
+
+        if (uploaders.length === 0) {
+            return yield* Effect.fail(new Error('No upload destinations configured — set Telegram or S3 env vars'));
+        }
+
+        const manager = new UploadManager(uploaders);
+        yield* Effect.tryPromise(() => manager.healthCheckAll());
+        yield* Effect.log('All upload destinations passed health checks');
+        return manager;
     }),
 );
 
@@ -152,7 +188,7 @@ const RingApiLive = Layer.effect(
 // --- Main ---
 
 /**
- * Main program effect. Loads config, initialises the Ring API and Telegram bot,
+ * Main program effect. Loads config, initialises services,
  * then runs all listeners concurrently. Crashes on the first stream failure.
  */
 const program = Effect.gen(function* () {
@@ -172,8 +208,14 @@ const program = Effect.gen(function* () {
     });
 });
 
-const ConfigLive = Layer.mergeAll(TelegramConfigLive, RingConfigLive, RecordingConfigLive, WatchdogConfigLive);
-const ServicesLive = Layer.mergeAll(TelegramBotLive, RingApiLive).pipe(Layer.provide(ConfigLive));
+const ConfigLive = Layer.mergeAll(
+    TelegramConfigLive,
+    RingConfigLive,
+    RecordingConfigLive,
+    WatchdogConfigLive,
+    S3StorageConfigLive,
+);
+const ServicesLive = Layer.mergeAll(UploadManagerLive, RingApiLive).pipe(Layer.provide(ConfigLive));
 const AppLive = Layer.merge(ConfigLive, ServicesLive);
 
 NodeRuntime.runMain(program.pipe(Effect.provide(AppLive)));
