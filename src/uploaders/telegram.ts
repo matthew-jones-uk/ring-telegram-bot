@@ -7,6 +7,10 @@ export class TelegramUploader implements Uploader {
         private chatIds: string[],
     ) {}
 
+    async healthCheck(): Promise<void> {
+        await this.bot.getMe();
+    }
+
     async upload(filePath: string, filename: string): Promise<UploadResult> {
         const fileOptions = { filename, contentType: 'video/mp4' };
         const errors: Error[] = [];

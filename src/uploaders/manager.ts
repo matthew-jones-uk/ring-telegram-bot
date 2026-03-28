@@ -3,6 +3,17 @@ import { Uploader, UploadResult } from './uploader';
 export class UploadManager {
     constructor(private uploaders: Uploader[]) {}
 
+    async healthCheckAll(): Promise<void> {
+        const results = await Promise.allSettled(this.uploaders.map((u) => u.healthCheck()));
+        const failures = results
+            .map((r, i) => (r.status === 'rejected' ? { uploader: this.uploaders[i], error: r.reason } : null))
+            .filter((r) => r !== null);
+        if (failures.length > 0) {
+            const messages = failures.map((f) => (f.error instanceof Error ? f.error.message : String(f.error)));
+            throw new Error(`Health check failed: ${messages.join('; ')}`);
+        }
+    }
+
     async uploadToAll(filePath: string, filename: string): Promise<UploadResult[]> {
         if (this.uploaders.length === 0) {
             console.warn('No uploaders configured');
