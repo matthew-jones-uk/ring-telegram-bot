@@ -38,5 +38,8 @@
     "singleQuote": true,
     "printWidth": 120,
     "tabWidth": 4
+  },
+  "overrides": {
+    "@eneris/push-receiver": "4.4.0"
   }
 }
