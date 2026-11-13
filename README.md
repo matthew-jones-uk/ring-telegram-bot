@@ -150,10 +150,32 @@ npm start
 ```
 
 ### Docker
+Mount your `.env` file into the container instead of passing it with `--env-file`:
+
 ```bash
 docker build -t ring-telegram-bot .
-docker run -d --env-file .env ring-telegram-bot
+docker run -d --restart unless-stopped \
+  -v "$(pwd)/.env:/app/.env" \
+  ring-telegram-bot
 ```
+
+Or with Docker Compose:
+
+```yaml
+services:
+  ring_bot:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./.env:/app/.env
+```
+
+**Why a mount and not `--env-file`?** Ring rotates the refresh token, and the bot saves the new one by rewriting `.env` in its working directory (`/app/.env`). With `--env-file` there is no `.env` file inside the container, so the new token can't be saved and the next restart uses an old token that Ring has already invalidated (`Refresh token is not valid`).
+
+Things to watch for:
+- The `.env` file must exist on the host before the container starts, otherwise Docker creates a directory with that name.
+- Don't also set the same variables with `--env-file` or `environment:`. Variables already set in the container win over the mounted file, so a stale `RING_REFRESH_TOKEN` would override the one the bot saves.
+- If you edit `.env` on the host with a tool that replaces the file (for example `sed -i` or some editors), a running container keeps seeing the old copy. Recreate the container afterwards (`docker compose up -d --force-recreate`).
 
 Note: When using Docker, ensure `RECORDING_DIR` points to a writable directory inside the container.
 
@@ -207,6 +229,11 @@ Total time from motion detection to notification:
 - For group chats, the bot must be added to the group first
 
 ### General Issues
+
+**"Refresh token is not valid" on startup**
+- Ring refresh tokens are rotated, and an old one stops working. Generate a new one with `npx -p ring-client-api ring-auth-cli`, put it in `.env`, and restart
+- If it keeps happening in Docker, check that `.env` is mounted into the container (see [Docker](#docker)) so the bot can save rotated tokens
+- Don't use the same refresh token in another tool (such as Home Assistant); they invalidate each other
 
 **No motion events detected**
 - Verify Ring devices are online in the Ring app
