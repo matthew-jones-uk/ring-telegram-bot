@@ -99,6 +99,28 @@ Create a `.env` file in the root directory. See `.env.example` for a complete re
 - Default: `false`
 - Files are only deleted if ALL uploads succeed
 
+**RECORDING_FILENAME_TEMPLATE**
+- Template for the S3/R2 object key (the path the recording is stored under). `.mp4` is added automatically
+- Default: `{date}/{time}-{camera}-{subtype}-{duration}s`, which gives keys like `2026-11-13/214855.507-Front_Door-motion-30s.mp4`
+- All dates and times are UTC
+- Placeholders:
+
+  | Placeholder | Value | Example |
+  | --- | --- | --- |
+  | `{timestamp}` | ISO 8601 basic format with milliseconds | `20261113T214855.507Z` |
+  | `{date}` | Date | `2026-11-13` |
+  | `{time}` | Time with milliseconds | `214855.507` |
+  | `{camera}` | Camera name, with spaces and slashes replaced by `_` | `Front_Door` |
+  | `{subtype}` | Event type reported by Ring | `motion` |
+  | `{duration}` | Requested recording length in seconds (`RECORDING_DURATION`) | `30` |
+
+- Use `/` to organise recordings into folders, e.g. `{camera}/{date}/{time}-{subtype}`
+- Other than placeholders, only letters, digits, `.`, `_`, `-` and `/` are allowed
+- The template must include `{timestamp}`, or both `{date}` and `{time}`, so recordings made close together can't overwrite each other
+- An invalid template stops the bot at startup with an error that says what's wrong
+- This only affects the S3/R2 key. The local file and the name shown in Telegram are always `{timestamp}-{camera}-{subtype}.mp4`
+- Recordings already in the bucket keep their old names
+
 ### Example Configuration
 
 #### Telegram Only
