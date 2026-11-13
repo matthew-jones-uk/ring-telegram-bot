@@ -1,4 +1,5 @@
-import { Config, Context, Effect, Layer, Option } from 'effect';
+import { Config, ConfigError, Context, Effect, Either, Layer, Option } from 'effect';
+import { DEFAULT_KEY_TEMPLATE, validateKeyTemplate } from './recording';
 import type { S3Config } from './uploaders/s3';
 
 /** Telegram bot token and chat IDs to send recordings to. Optional — not needed for S3-only deployments. */
@@ -42,7 +43,12 @@ export const RingConfigLive = Layer.effect(
 /** Recording snippet duration, output directory, and local cleanup behaviour. */
 export class RecordingConfig extends Context.Tag('RecordingConfig')<
     RecordingConfig,
-    { readonly snippetDuration: number; readonly directory: string; readonly cleanupAfterUpload: boolean }
+    {
+        readonly snippetDuration: number;
+        readonly directory: string;
+        readonly cleanupAfterUpload: boolean;
+        readonly keyTemplate: string;
+    }
 >() {}
 
 export const RecordingConfigLive = Layer.effect(
@@ -51,6 +57,15 @@ export const RecordingConfigLive = Layer.effect(
         snippetDuration: Config.integer('RECORDING_DURATION').pipe(Config.withDefault(30)),
         directory: Config.string('RECORDING_DIR').pipe(Config.withDefault('/tmp')),
         cleanupAfterUpload: Config.boolean('CLEANUP_LOCAL_FILES').pipe(Config.withDefault(false)),
+        keyTemplate: Config.string('RECORDING_FILENAME_TEMPLATE').pipe(
+            Config.withDefault(DEFAULT_KEY_TEMPLATE),
+            Config.mapOrFail((template) => {
+                const error = validateKeyTemplate(template);
+                return error
+                    ? Either.left(ConfigError.InvalidData([], `RECORDING_FILENAME_TEMPLATE: ${error}`))
+                    : Either.right(template);
+            }),
+        ),
     }),
 );
 

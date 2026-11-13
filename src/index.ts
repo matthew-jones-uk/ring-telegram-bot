@@ -18,7 +18,7 @@ import {
     S3StorageConfigLive,
 } from './config';
 import { streamFromObservable, neverEndingStream } from './stream';
-import { recordingFilename } from './recording';
+import { recordingFilename, recordingKey } from './recording';
 import { UploadManager } from './uploaders/manager';
 import { TelegramUploader } from './uploaders/telegram';
 import { S3Uploader } from './uploaders/s3';
@@ -92,7 +92,14 @@ const cameraListener = (camera: RingCamera) =>
                         (notification) =>
                             Effect.gen(function* () {
                                 const { ding } = notification.data.event;
-                                const filename = recordingFilename(camera.name, ding.subtype);
+                                const now = new Date();
+                                const filename = recordingFilename(camera.name, ding.subtype, now);
+                                const key = recordingKey(recording.keyTemplate, {
+                                    cameraName: camera.name,
+                                    subtype: ding.subtype,
+                                    durationSeconds: recording.snippetDuration,
+                                    date: now,
+                                });
                                 yield* Effect.log(
                                     `${ding.detection_type} event of ${ding.subtype} on ${camera.name}. Recording to ${filename}`,
                                 );
@@ -101,7 +108,7 @@ const cameraListener = (camera: RingCamera) =>
                                     camera.recordToFile(recordingFile, recording.snippetDuration),
                                 );
                                 const results = yield* Effect.tryPromise(() =>
-                                    uploadManager.uploadToAll(recordingFile, filename, filename),
+                                    uploadManager.uploadToAll(recordingFile, filename, key),
                                 );
                                 yield* Effect.forEach(
                                     results,
