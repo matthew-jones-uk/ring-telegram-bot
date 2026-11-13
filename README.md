@@ -76,6 +76,12 @@ Create a `.env` file in the root directory. See `.env.example` for a complete re
 - If not set, URLs will use the S3 endpoint
 - Note: For Cloudflare R2, configure custom domains in bucket settings → Public Access
 
+**S3_FORCE_PATH_STYLE** (optional)
+- Use path-style addressing (`endpoint/bucket/key`) instead of putting the bucket in the hostname
+- Set to `true` for MinIO and most other self-hosted S3 servers
+- Not needed for Cloudflare R2 or AWS S3
+- Default: `false`
+
 #### Optional Configuration
 
 **RECORDING_DURATION**

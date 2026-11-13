@@ -82,9 +82,10 @@ export const S3StorageConfigLive = Layer.unwrapEffect(
             }),
         ),
         publicUrl: Config.option(Config.string('S3_PUBLIC_URL')),
+        forcePathStyle: Config.boolean('S3_FORCE_PATH_STYLE').pipe(Config.withDefault(false)),
     }).pipe(
-        Config.map(({ core, publicUrl }) =>
-            Option.map(core, (c) => ({ ...c, publicUrl: Option.getOrUndefined(publicUrl) })),
+        Config.map(({ core, publicUrl, forcePathStyle }) =>
+            Option.map(core, (c) => ({ ...c, publicUrl: Option.getOrUndefined(publicUrl), forcePathStyle })),
         ),
         Effect.map(
             Option.match({

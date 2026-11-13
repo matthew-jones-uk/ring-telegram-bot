@@ -10,6 +10,8 @@ export type S3Config = {
     accessKeyId: string;
     secretAccessKey: string;
     publicUrl?: string;
+    /** Use path-style addressing (endpoint/bucket/key). Required by MinIO and most self-hosted S3 servers. */
+    forcePathStyle?: boolean;
 };
 
 export class S3Uploader implements Uploader {
@@ -20,6 +22,7 @@ export class S3Uploader implements Uploader {
         this.s3Client = new S3Client({
             endpoint: config.endpoint,
             region: config.region,
+            forcePathStyle: config.forcePathStyle,
             credentials: {
                 accessKeyId: config.accessKeyId,
                 secretAccessKey: config.secretAccessKey,
