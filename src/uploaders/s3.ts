@@ -38,14 +38,14 @@ export class S3Uploader implements Uploader {
         }
     }
 
-    async upload(filePath: string, filename: string): Promise<UploadResult> {
+    async upload(filePath: string, _filename: string, key: string): Promise<UploadResult> {
         try {
             const fileStream = createReadStream(filePath);
             const fileStats = await stat(filePath);
 
             const command = new PutObjectCommand({
                 Bucket: this.config.bucket,
-                Key: filename,
+                Key: key,
                 Body: fileStream,
                 ContentType: 'video/mp4',
                 ContentLength: fileStats.size,
@@ -53,10 +53,11 @@ export class S3Uploader implements Uploader {
 
             await this.s3Client.send(command);
 
-            const encodedFilename = encodeURIComponent(filename);
+            // Encode each path segment but keep the `/` separators.
+            const encodedKey = key.split('/').map(encodeURIComponent).join('/');
             const url = this.config.publicUrl
-                ? `${this.config.publicUrl}/${encodedFilename}`
-                : `${this.config.endpoint}/${this.config.bucket}/${encodedFilename}`;
+                ? `${this.config.publicUrl}/${encodedKey}`
+                : `${this.config.endpoint}/${this.config.bucket}/${encodedKey}`;
 
             return {
                 success: true,
@@ -65,7 +66,7 @@ export class S3Uploader implements Uploader {
             };
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
-            console.error(`Error uploading ${filename} to S3:`, err.message);
+            console.error(`Error uploading ${key} to S3:`, err.message);
             return {
                 success: false,
                 destination: this.destination,

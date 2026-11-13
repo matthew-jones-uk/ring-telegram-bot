@@ -17,14 +17,14 @@ export class UploadManager {
         }
     }
 
-    async uploadToAll(filePath: string, filename: string): Promise<UploadResult[]> {
+    async uploadToAll(filePath: string, filename: string, key: string): Promise<UploadResult[]> {
         if (this.uploaders.length === 0) {
             console.warn('No uploaders configured');
             return [];
         }
 
         const results = await Promise.allSettled(
-            this.uploaders.map((uploader) => uploader.upload(filePath, filename)),
+            this.uploaders.map((uploader) => uploader.upload(filePath, filename, key)),
         );
 
         return results.map((result) => {

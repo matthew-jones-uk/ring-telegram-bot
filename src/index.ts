@@ -101,7 +101,7 @@ const cameraListener = (camera: RingCamera) =>
                                     camera.recordToFile(recordingFile, recording.snippetDuration),
                                 );
                                 const results = yield* Effect.tryPromise(() =>
-                                    uploadManager.uploadToAll(recordingFile, filename),
+                                    uploadManager.uploadToAll(recordingFile, filename, filename),
                                 );
                                 yield* Effect.forEach(
                                     results,
