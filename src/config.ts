@@ -11,7 +11,13 @@ export const TelegramConfigLive = Layer.unwrapEffect(
     Config.option(
         Config.all({
             botToken: Config.string('TELEGRAM_BOT_TOKEN'),
-            chatIds: Config.map(Config.string('TELEGRAM_BOT_CHATS'), (s) => s.split(' ')),
+            chatIds: Config.string('TELEGRAM_BOT_CHATS').pipe(
+                Config.map((s) => s.split(/\s+/).filter(Boolean)),
+                Config.validate({
+                    message: 'TELEGRAM_BOT_CHATS must contain at least one chat ID',
+                    validation: (ids): ids is string[] => ids.length > 0,
+                }),
+            ),
         }),
     ).pipe(
         Effect.map(
