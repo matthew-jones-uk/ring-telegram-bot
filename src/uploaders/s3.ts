@@ -53,9 +53,10 @@ export class S3Uploader implements Uploader {
 
             await this.s3Client.send(command);
 
+            const encodedFilename = encodeURIComponent(filename);
             const url = this.config.publicUrl
-                ? `${this.config.publicUrl}/${filename}`
-                : `${this.config.endpoint}/${this.config.bucket}/${filename}`;
+                ? `${this.config.publicUrl}/${encodedFilename}`
+                : `${this.config.endpoint}/${this.config.bucket}/${encodedFilename}`;
 
             return {
                 success: true,
