@@ -18,6 +18,7 @@ import {
     S3StorageConfigLive,
 } from './config';
 import { streamFromObservable, neverEndingStream } from './stream';
+import { recordingFilename } from './recording';
 import { UploadManager } from './uploaders/manager';
 import { TelegramUploader } from './uploaders/telegram';
 import { S3Uploader } from './uploaders/s3';
@@ -91,8 +92,7 @@ const cameraListener = (camera: RingCamera) =>
                         (notification) =>
                             Effect.gen(function* () {
                                 const { ding } = notification.data.event;
-                                const timestamp = new Date().toISOString();
-                                const filename = `${timestamp}-${camera.name}-${ding.subtype}.mp4`;
+                                const filename = recordingFilename(camera.name, ding.subtype);
                                 yield* Effect.log(
                                     `${ding.detection_type} event of ${ding.subtype} on ${camera.name}. Recording to ${filename}`,
                                 );
