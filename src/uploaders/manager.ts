@@ -1,3 +1,4 @@
+import { recordDownstreamCall } from '../metrics';
 import { Uploader, UploadResult } from './uploader';
 
 export class UploadManager {
@@ -24,7 +25,18 @@ export class UploadManager {
         }
 
         const results = await Promise.allSettled(
-            this.uploaders.map((uploader) => uploader.upload(filePath, filename, key)),
+            this.uploaders.map(async (uploader) => {
+                const start = performance.now();
+                const seconds = () => (performance.now() - start) / 1000;
+                try {
+                    const result = await uploader.upload(filePath, filename, key);
+                    recordDownstreamCall(uploader.destination, result.success ? 'ok' : 'error', seconds());
+                    return result;
+                } catch (error) {
+                    recordDownstreamCall(uploader.destination, 'error', seconds());
+                    throw error;
+                }
+            }),
         );
 
         return results.map((result) => {
