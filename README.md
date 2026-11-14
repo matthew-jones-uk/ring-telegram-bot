@@ -39,6 +39,13 @@ Create a `.env` file in the root directory. See `.env.example` for a complete re
 - Instructions: [How to generate a refresh token](https://github.com/dgreif/ring/wiki/Refresh-Tokens)
 - Note: This token auto-refreshes and the bot will update your `.env` file automatically
 
+**RING_STATUS_POLLING_SECONDS** (optional)
+- How often to refresh camera status (online, battery, push subscription) from Ring, in seconds
+- The watchdog log line reads this. Without polling, those values stay as they were when the bot started
+- Each refresh is one request that covers all cameras
+- Set to `0` to turn polling off
+- Default: `300`
+
 #### Telegram Configuration (optional — omit for S3-only deployments)
 
 **TELEGRAM_BOT_TOKEN**
