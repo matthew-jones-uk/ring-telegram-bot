@@ -30,13 +30,23 @@ export const TelegramConfigLive = Layer.unwrapEffect(
     ),
 );
 
-/** Ring API refresh token. */
-export class RingConfig extends Context.Tag('RingConfig')<RingConfig, { readonly refreshToken: string }>() {}
+/** Ring API refresh token, and how often to refresh camera status (0 turns polling off). */
+export class RingConfig extends Context.Tag('RingConfig')<
+    RingConfig,
+    { readonly refreshToken: string; readonly statusPollingSeconds: number }
+>() {}
 
 export const RingConfigLive = Layer.effect(
     RingConfig,
     Config.all({
         refreshToken: Config.string('RING_REFRESH_TOKEN'),
+        statusPollingSeconds: Config.integer('RING_STATUS_POLLING_SECONDS').pipe(
+            Config.withDefault(300),
+            Config.validate({
+                message: 'RING_STATUS_POLLING_SECONDS must be 0 (off) or a positive number of seconds',
+                validation: (seconds) => seconds >= 0,
+            }),
+        ),
     }),
 );
 

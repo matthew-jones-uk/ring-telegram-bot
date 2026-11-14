@@ -213,10 +213,12 @@ class RingApiService extends Context.Tag('RingApiService')<RingApiService, RingA
 const RingApiLive = Layer.effect(
     RingApiService,
     Effect.gen(function* () {
-        const { refreshToken } = yield* RingConfig;
+        const { refreshToken, statusPollingSeconds } = yield* RingConfig;
         return new RingApi({
             debug: true,
             avoidSnapshotBatteryDrain: true,
+            // Without this camera.data is only read once at startup, so the watchdog would report stale values.
+            cameraStatusPollingSeconds: statusPollingSeconds,
             refreshToken,
         });
     }),
