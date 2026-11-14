@@ -16,7 +16,17 @@ import {
     WatchdogConfigLive,
     S3StorageConfig,
     S3StorageConfigLive,
+    MetricsConfigLive,
 } from './config';
+import {
+    MetricsLive,
+    initMetrics,
+    recordEventHandled,
+    recordEventInFlight,
+    recordEventReceived,
+    recordTokenRefresh,
+    timedCall,
+} from './metrics';
 import { streamFromObservable, neverEndingStream } from './stream';
 import { recordingFilename, recordingKey } from './recording';
 import { UploadManager } from './uploaders/manager';
@@ -45,7 +55,12 @@ const refreshTokenListener = (ringApi: RingApi) =>
                 const updatedConfig = configStr.replace(oldRefreshToken, newRefreshToken);
                 yield* Effect.tryPromise(() => writeFile('.env', updatedConfig));
                 yield* Effect.log('Updated .env with new refresh token');
-            }),
+            }).pipe(
+                Effect.tapBoth({
+                    onSuccess: () => Effect.sync(() => recordTokenRefresh('ok')),
+                    onFailure: () => Effect.sync(() => recordTokenRefresh('error')),
+                }),
+            ),
         ),
     );
 
@@ -89,9 +104,13 @@ const cameraListener = (camera: RingCamera) =>
                     `Notification stream for ${camera.name} ended unexpectedly`,
                 ).pipe(
                     Stream.mapEffect(
-                        (notification) =>
-                            Effect.gen(function* () {
-                                const { ding } = notification.data.event;
+                        (notification) => {
+                            const { ding } = notification.data.event;
+                            recordEventReceived(camera.name, ding.subtype);
+                            recordEventInFlight(1);
+                            // Set once every destination has accepted the recording.
+                            let handledOk = false;
+                            return Effect.gen(function* () {
                                 const now = new Date();
                                 const filename = recordingFilename(camera.name, ding.subtype, now);
                                 const key = recordingKey(recording.keyTemplate, {
@@ -105,11 +124,14 @@ const cameraListener = (camera: RingCamera) =>
                                 );
                                 const recordingFile = path.join(recording.directory, filename);
                                 yield* Effect.tryPromise(() =>
-                                    camera.recordToFile(recordingFile, recording.snippetDuration),
+                                    timedCall('camera_recording', () =>
+                                        camera.recordToFile(recordingFile, recording.snippetDuration),
+                                    ),
                                 );
                                 const results = yield* Effect.tryPromise(() =>
                                     uploadManager.uploadToAll(recordingFile, filename, key),
                                 );
+                                handledOk = results.every((r) => r.success);
                                 yield* Effect.forEach(
                                     results,
                                     (result) =>
@@ -132,7 +154,15 @@ const cameraListener = (camera: RingCamera) =>
                                         Effect.catchAll((e) => Effect.log(`Failed to clean up ${filename}: ${e}`)),
                                     );
                                 }
-                            }),
+                            }).pipe(
+                                Effect.ensuring(
+                                    Effect.sync(() => {
+                                        recordEventInFlight(-1);
+                                        recordEventHandled(handledOk ? 'ok' : 'error');
+                                    }),
+                                ),
+                            );
+                        },
                         { concurrency: 'unbounded' },
                     ),
                     Stream.runDrain,
@@ -203,6 +233,7 @@ const program = Effect.gen(function* () {
 
     const cameras = yield* Effect.tryPromise(() => ringApi.getCameras());
     yield* Effect.log(`Got total of ${cameras.length} camera(s)`);
+    initMetrics(cameras.map((camera) => camera.name));
 
     for (const camera of cameras) {
         yield* Effect.log(`Found ${camera.deviceType} called ${camera.name}`);
@@ -221,8 +252,9 @@ const ConfigLive = Layer.mergeAll(
     RecordingConfigLive,
     WatchdogConfigLive,
     S3StorageConfigLive,
+    MetricsConfigLive,
 );
-const ServicesLive = Layer.mergeAll(UploadManagerLive, RingApiLive).pipe(Layer.provide(ConfigLive));
+const ServicesLive = Layer.mergeAll(UploadManagerLive, RingApiLive, MetricsLive).pipe(Layer.provide(ConfigLive));
 const AppLive = Layer.merge(ConfigLive, ServicesLive);
 
 NodeRuntime.runMain(program.pipe(Effect.provide(AppLive)));
