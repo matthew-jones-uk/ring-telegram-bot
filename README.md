@@ -39,6 +39,11 @@ Create a `.env` file in the root directory. See `.env.example` for a complete re
 - Instructions: [How to generate a refresh token](https://github.com/dgreif/ring/wiki/Refresh-Tokens)
 - Note: This token auto-refreshes and the bot will update your `.env` file automatically
 
+**WATCHDOG_INTERVAL_MINUTES** (optional)
+- How often, in minutes, to log a health line for each camera: `[watchdog] <camera>: offline=…, subscribed=…, subscribed_motions=…, active_notifications=…, battery=…`
+- One line is also logged at startup
+- Default: `30`
+
 **RING_STATUS_POLLING_SECONDS** (optional)
 - How often to refresh camera status (online, battery, push subscription) from Ring, in seconds
 - The watchdog log line reads this. Without polling, those values stay as they were when the bot started
