@@ -110,3 +110,25 @@ export const S3StorageConfigLive = Layer.unwrapEffect(
         ),
     ),
 );
+
+/** Prometheus `/metrics` endpoint. Optional: absent unless METRICS_PORT is set. */
+export class MetricsConfig extends Context.Tag('MetricsConfig')<
+    MetricsConfig,
+    { readonly host: string; readonly port: number }
+>() {}
+
+export const MetricsConfigLive = Layer.unwrapEffect(
+    Config.option(
+        Config.all({
+            port: Config.port('METRICS_PORT'),
+            host: Config.string('METRICS_HOST').pipe(Config.withDefault('0.0.0.0')),
+        }),
+    ).pipe(
+        Effect.map(
+            Option.match({
+                onNone: () => Layer.empty,
+                onSome: (value) => Layer.succeed(MetricsConfig, value),
+            }),
+        ),
+    ),
+);

@@ -121,6 +121,31 @@ Create a `.env` file in the root directory. See `.env.example` for a complete re
 - This only affects the S3/R2 key. The local file and the name shown in Telegram are always `{timestamp}-{camera}-{subtype}.mp4`
 - Recordings already in the bucket keep their old names
 
+**METRICS_PORT** (optional)
+- Serve Prometheus metrics on this port at `/metrics`. Metrics are off unless this is set
+- Example: `9464`
+- There is no authentication, so only expose the port to your monitoring network. With Docker, don't publish it on the host; scrape it from another container on the same network (for example `ring_bot:9464`)
+- If the port can't be bound the bot stops at startup with an error
+
+**METRICS_HOST** (optional)
+- Address the metrics server listens on
+- Default: `0.0.0.0`
+
+### Metrics
+
+When `METRICS_PORT` is set, these are served at `/metrics`. Counters start at 0 each time the bot starts, so use `increase()` or `rate()` in queries.
+
+| Metric | Type | Labels | Meaning |
+| --- | --- | --- | --- |
+| `ring_bot_events_received_total` | counter | `camera`, `event_type` | Push notifications from Ring, counted on arrival, before any recording |
+| `ring_bot_events_handled_total` | counter | `outcome` (`ok`/`error`) | Events recorded and uploaded to every destination (`ok`) or not (`error`) |
+| `ring_bot_events_in_flight` | gauge | | Events currently being recorded or uploaded |
+| `ring_bot_downstream_call_duration_seconds` | histogram | `target`, `outcome` | Time spent recording (`camera_recording`) and uploading (`telegram`, `s3`) |
+| `ring_bot_token_refreshes_total` | counter | `outcome` | Ring refresh token rotations, and whether the new token was saved to `.env` |
+| `ring_bot_start_time_seconds` | gauge | | Unix time the bot started |
+
+`ring_bot_events_received_total` is the one to watch for "Ring has stopped sending events": it counts arrivals, so it keeps working when uploads fail, and it is created at 0 for each camera at startup. The Effect runtime's own `effect_fiber_*` metrics are served as well.
+
 ### Example Configuration
 
 #### Telegram Only
