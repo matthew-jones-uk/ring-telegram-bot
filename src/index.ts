@@ -108,6 +108,7 @@ const cameraListener = (camera: RingCamera) =>
                     Stream.mapEffect(
                         (notification) => {
                             const { ding } = notification.data.event;
+                            const receivedAt = Date.now();
                             recordEventReceived(camera.name, ding.subtype);
                             recordEventInFlight(1);
                             // Set once every destination has accepted the recording.
@@ -124,12 +125,30 @@ const cameraListener = (camera: RingCamera) =>
                                 yield* Effect.log(
                                     `${ding.detection_type} event of ${ding.subtype} on ${camera.name}. Recording to ${filename}`,
                                 );
+                                // Diagnostic: every time field in the push payload, to work out how much of the delay before
+                                // recording starts happens on Ring's side.
+                                yield* Effect.log(
+                                    `Push times for ${filename}: received=${receivedAt} ` +
+                                        `ding.created_at=${ding.created_at} ` +
+                                        `eventito.timestamp=${notification.data.event.eventito?.timestamp} ` +
+                                        `triggered_at=${notification.analytics?.triggered_at} ` +
+                                        `sent_at=${notification.analytics?.sent_at}`,
+                                );
                                 const recordingFile = path.join(recording.directory, filename);
                                 const udpDropsBefore = readUdpRcvbufErrors();
-                                yield* Effect.tryPromise(() =>
+                                const timings = yield* Effect.tryPromise(() =>
                                     timedCall('camera_recording', () =>
                                         recordClip(camera, recordingFile, recording.snippetDuration),
                                     ),
+                                );
+                                yield* Effect.log(
+                                    `Stream timings for ${filename}: session=${Math.round(timings.sessionMs)}ms ` +
+                                        `ffmpeg_spawned=${Math.round(timings.transcodingStartedMs)}ms ` +
+                                        `first_video=${
+                                            timings.firstVideoMs === undefined
+                                                ? 'none'
+                                                : `${Math.round(timings.firstVideoMs)}ms`
+                                        }`,
                                 );
                                 // Diagnostic: packets the kernel dropped because a UDP receive buffer was full while this
                                 // recording ran. Recordings can start with corrupt video when the first keyframe's packets
