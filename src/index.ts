@@ -30,6 +30,7 @@ import {
 import { streamFromObservable, neverEndingStream } from './stream';
 import { recordClip } from './recordClip';
 import { recordingFilename, recordingKey } from './recording';
+import { readUdpRcvbufErrors } from './udpDrops';
 import { UploadManager } from './uploaders/manager';
 import { TelegramUploader } from './uploaders/telegram';
 import { S3Uploader } from './uploaders/s3';
@@ -124,10 +125,22 @@ const cameraListener = (camera: RingCamera) =>
                                     `${ding.detection_type} event of ${ding.subtype} on ${camera.name}. Recording to ${filename}`,
                                 );
                                 const recordingFile = path.join(recording.directory, filename);
+                                const udpDropsBefore = readUdpRcvbufErrors();
                                 yield* Effect.tryPromise(() =>
                                     timedCall('camera_recording', () =>
                                         recordClip(camera, recordingFile, recording.snippetDuration),
                                     ),
+                                );
+                                // Diagnostic: packets the kernel dropped because a UDP receive buffer was full while this
+                                // recording ran. Recordings can start with corrupt video when the first keyframe's packets
+                                // are lost. The counter covers the whole container, so overlapping recordings share it.
+                                const udpDropsAfter = readUdpRcvbufErrors();
+                                yield* Effect.log(
+                                    udpDropsBefore === undefined || udpDropsAfter === undefined
+                                        ? `UDP receive-buffer drops during ${filename}: unavailable`
+                                        : `UDP receive-buffer drops during ${filename}: ${
+                                              udpDropsAfter - udpDropsBefore
+                                          } (container total ${udpDropsAfter})`,
                                 );
                                 const results = yield* Effect.tryPromise(() =>
                                     uploadManager.uploadToAll(recordingFile, filename, key),
@@ -242,6 +255,9 @@ const program = Effect.gen(function* () {
         yield* Effect.log(`Found ${camera.deviceType} called ${camera.name}`);
     }
 
+    yield* Effect.log(
+        `UDP receive-buffer drop counter: ${readUdpRcvbufErrors() === undefined ? 'unavailable' : 'available'}`,
+    );
     yield* Effect.log('Listening for motion events...');
 
     yield* Effect.all([refreshTokenListener(ringApi), ...cameras.map((camera) => cameraListener(camera))], {
