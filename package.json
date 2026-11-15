@@ -22,12 +22,11 @@
     "@opentelemetry/sdk-metrics": "^2.12.1",
     "dotenv": "^16.0.0",
     "effect": "^3.22.4",
-    "node-telegram-bot-api": "^0.66.0",
+    "node-telegram-bot-api": "^2.4.0",
     "ring-client-api": "^14.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.19.11",
-    "@types/node-telegram-bot-api": "^0.64.7",
     "@types/ws": "^8.5.3",
     "@typescript-eslint/eslint-plugin": "^5.40.1",
     "@typescript-eslint/parser": "^5.40.1",
