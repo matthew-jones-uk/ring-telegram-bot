@@ -28,6 +28,7 @@ import {
     timedCall,
 } from './metrics';
 import { streamFromObservable, neverEndingStream } from './stream';
+import { recordClip } from './recordClip';
 import { recordingFilename, recordingKey } from './recording';
 import { UploadManager } from './uploaders/manager';
 import { TelegramUploader } from './uploaders/telegram';
@@ -125,7 +126,7 @@ const cameraListener = (camera: RingCamera) =>
                                 const recordingFile = path.join(recording.directory, filename);
                                 yield* Effect.tryPromise(() =>
                                     timedCall('camera_recording', () =>
-                                        camera.recordToFile(recordingFile, recording.snippetDuration),
+                                        recordClip(camera, recordingFile, recording.snippetDuration),
                                     ),
                                 );
                                 const results = yield* Effect.tryPromise(() =>
