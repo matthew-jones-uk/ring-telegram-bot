@@ -1,6 +1,6 @@
 import { RingApi, RingCamera } from 'ring-client-api';
 import 'dotenv/config';
-import TelegramBot from 'node-telegram-bot-api';
+import { Api } from 'node-telegram-bot-api';
 import { readFile, writeFile, unlink } from 'fs/promises';
 import * as path from 'path';
 import { Context, Duration, Effect, Layer, Option, Schedule, Stream } from 'effect';
@@ -187,7 +187,7 @@ const UploadManagerLive = Layer.effect(
 
         if (Option.isSome(telegramOpt)) {
             const { botToken, chatIds } = telegramOpt.value;
-            uploaders.push(new TelegramUploader(new TelegramBot(botToken, { polling: false }), chatIds));
+            uploaders.push(new TelegramUploader(new Api(botToken), chatIds));
             yield* Effect.log('Telegram uploader configured');
         }
 

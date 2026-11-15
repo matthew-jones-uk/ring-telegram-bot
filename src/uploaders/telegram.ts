@@ -1,22 +1,24 @@
-import TelegramBot from 'node-telegram-bot-api';
+import type { Api } from 'node-telegram-bot-api';
+import { fromPath } from 'node-telegram-bot-api/node';
 import { Uploader, UploadResult } from './uploader';
 
 export class TelegramUploader implements Uploader {
     readonly destination = 'telegram';
 
-    constructor(private bot: TelegramBot, private chatIds: string[]) {}
+    constructor(private api: Api, private chatIds: string[]) {}
 
     async healthCheck(): Promise<void> {
-        await this.bot.getMe();
+        await this.api.getMe();
     }
 
     async upload(filePath: string, filename: string): Promise<UploadResult> {
-        const fileOptions = { filename, contentType: 'video/mp4' };
         const failures: { chatId: string; error: Error }[] = [];
 
         for (const chatId of this.chatIds) {
             try {
-                await this.bot.sendVideo(chatId, filePath, {}, fileOptions);
+                // fromPath streams from disk and reopens the file if the transport retries
+                const video = await fromPath(filePath, { filename, contentType: 'video/mp4' });
+                await this.api.sendVideo({ chat_id: chatId, video });
             } catch (e) {
                 const error = e instanceof Error ? e : new Error(String(e));
                 console.error(`Error sending ${filename} to chat ${chatId}:`, error.message);
